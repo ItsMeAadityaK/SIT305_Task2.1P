@@ -3,9 +3,7 @@ package com.example.unitconverterapp;
 import android.os.Bundle;
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
+
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -17,14 +15,15 @@ import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity {
 
-    private EditText inputValue;
+    private EditText inputField;
     private Spinner sourceUnit, destinationUnit;
-    private Button convertButton;
-    private TextView resultText;
+    private Button convertBtn, resetBtn;
+    private TextView outputText;
 
-    private String[] lengthUnits = {"Inches", "Feet", "Yards", "Miles", "Centimeters", "Kilometers"};
-    private String[] weightUnits = {"Pounds", "Ounces", "Tons", "Kilograms", "Grams"};
-    private String[] temperatureUnits = {"Celsius", "Fahrenheit", "Kelvin"};
+    // Unit categories
+    private final String[] length = {"Inches", "Feet", "Yards", "Miles", "Centimeters", "Kilometers"};
+    private final String[] weight = {"Pounds", "Ounces", "Tons", "Kilograms", "Grams"};
+    private final String[] temperature = {"Celsius", "Fahrenheit", "Kelvin"};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,112 +31,101 @@ public class MainActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
 
-        inputValue = findViewById(R.id.inputValue);
+        inputField = findViewById(R.id.inputValue);
         sourceUnit = findViewById(R.id.sourceUnit);
         destinationUnit = findViewById(R.id.destinationUnit);
-        convertButton = findViewById(R.id.convertButton);
-        resultText = findViewById(R.id.resultText);
-        Button resetButton = findViewById(R.id.resetButton);
+        convertBtn = findViewById(R.id.convertButton);
+        resetBtn = findViewById(R.id.resetButton);
+        outputText = findViewById(R.id.resultText);
 
-        // Start with empty destination spinner
-        ArrayAdapter<String> emptyAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, new String[]{});
-        destinationUnit.setAdapter(emptyAdapter);
+        // Keep destination spinner empty until a unit is chosen
+        destinationUnit.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, new String[]{}));
 
-        // All units available for source spinner
+        // Populate source spinner with all available units
         String[] allUnits = {
                 "Inches", "Feet", "Yards", "Miles", "Centimeters", "Kilometers",
                 "Pounds", "Ounces", "Tons", "Kilograms", "Grams",
                 "Celsius", "Fahrenheit", "Kelvin"
         };
-
-        ArrayAdapter<String> sourceAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, allUnits);
-        sourceUnit.setAdapter(sourceAdapter);
+        sourceUnit.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, allUnits));
 
         sourceUnit.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
                 String selected = sourceUnit.getSelectedItem().toString();
-                updateSpinnerOptions(selected);
+                loadMatchingUnits(selected);
             }
 
             @Override
-            public void onNothingSelected(AdapterView<?> parent) {}
+            public void onNothingSelected(AdapterView<?> adapterView) {}
         });
 
-        convertButton.setOnClickListener(v -> {
-            String source = (String) sourceUnit.getSelectedItem();
-            String destination = (String) destinationUnit.getSelectedItem();
-            String input = inputValue.getText().toString();
+        convertBtn.setOnClickListener(v -> {
+            String from = (String) sourceUnit.getSelectedItem();
+            String to = (String) destinationUnit.getSelectedItem();
+            String input = inputField.getText().toString();
 
-            if (source == null || destination == null || input.isEmpty()) {
-                Toast.makeText(MainActivity.this, "Please enter a value and select both units", Toast.LENGTH_SHORT).show();
+            if (from == null || to == null || input.isEmpty()) {
+                Toast.makeText(this, "Please select both units and enter a value", Toast.LENGTH_SHORT).show();
                 return;
             }
 
             try {
-                double value = Double.parseDouble(input);
-                double result = convertUnits(source, destination, value);
-                resultText.setText("Converted Value: " + result);
+                double inputNumber = Double.parseDouble(input);
+                double result = convertValue(from, to, inputNumber);
+                outputText.setText("Result: " + result);
             } catch (Exception e) {
-                Toast.makeText(MainActivity.this, "Conversion error", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Oops! Something went wrong.", Toast.LENGTH_SHORT).show();
             }
         });
 
-        resetButton.setOnClickListener(v -> {
-            inputValue.setText("");
-            resultText.setText("Converted Value: ");
+        resetBtn.setOnClickListener(v -> {
+            inputField.setText("");
+            outputText.setText("Result:");
             sourceUnit.setSelection(0);
             destinationUnit.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, new String[]{}));
         });
     }
 
-    private boolean isInArray(String item, String[] array) {
-        for (String element : array) {
-            if (element.equals(item)) return true;
+    private void loadMatchingUnits(String unit) {
+        String[] list;
+        if (isinArray(unit, length)) list = length;
+        else if (isinArray(unit, weight)) list = weight;
+        else if (isinArray(unit, temperature)) list = temperature;
+        else list = new String[]{};
+
+        destinationUnit.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, list));
+    }
+
+    private boolean isinArray(String item, String[] group) {
+        for (String s : group) {
+            if (s.equals(item)) return true;
         }
         return false;
     }
 
-    private void updateSpinnerOptions(String selectedUnit) {
-        String[] newOptions;
+    private double convertValue(String from, String to, double number) {
+        // Length
+        if (from.equals("Inches") && to.equals("Centimeters")) return number * 2.54;
+        if (from.equals("Feet") && to.equals("Centimeters")) return number * 30.48;
+        if (from.equals("Yards") && to.equals("Centimeters")) return number * 91.44;
+        if (from.equals("Miles") && to.equals("Kilometers")) return number * 1.60934;
 
-        if (isInArray(selectedUnit, lengthUnits)) {
-            newOptions = lengthUnits;
-        } else if (isInArray(selectedUnit, weightUnits)) {
-            newOptions = weightUnits;
-        } else if (isInArray(selectedUnit, temperatureUnits)) {
-            newOptions = temperatureUnits;
-        } else {
-            newOptions = new String[]{};
-        }
+        // Weight
+        if (from.equals("Pounds") && to.equals("Kilograms")) return number * 0.453592;
+        if (from.equals("Ounces") && to.equals("Grams")) return number * 28.3495;
+        if (from.equals("Tons") && to.equals("Kilograms")) return number * 907.185;
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, newOptions);
-        destinationUnit.setAdapter(adapter);
-    }
+        // Temperature
+        if (from.equals("Celsius") && to.equals("Fahrenheit")) return (number * 1.8) + 32;
+        if (from.equals("Celsius") && to.equals("Kelvin")) return number + 273.15;
+        if (from.equals("Fahrenheit") && to.equals("Celsius")) return (number - 32) / 1.8;
+        if (from.equals("Kelvin") && to.equals("Celsius")) return number - 273.15;
 
+        // No conversion or same unit
+        if (from.equals(to)) return number;
 
-    private double convertUnits(String source, String destination, double value) {
-        // LENGTH
-        if (source.equals("Inches") && destination.equals("Centimeters")) return value * 2.54;
-        if (source.equals("Feet") && destination.equals("Centimeters")) return value * 30.48;
-        if (source.equals("Yards") && destination.equals("Centimeters")) return value * 91.44;
-        if (source.equals("Miles") && destination.equals("Kilometers")) return value * 1.60934;
-
-        // WEIGHT
-        if (source.equals("Pounds") && destination.equals("Kilograms")) return value * 0.453592;
-        if (source.equals("Ounces") && destination.equals("Grams")) return value * 28.3495;
-        if (source.equals("Tons") && destination.equals("Kilograms")) return value * 907.185;
-
-        // TEMPERATURE
-        if (source.equals("Celsius") && destination.equals("Fahrenheit")) return (value * 1.8) + 32;
-        if (source.equals("Celsius") && destination.equals("Kelvin")) return value + 273.15;
-        if (source.equals("Fahrenheit") && destination.equals("Celsius")) return (value - 32) / 1.8;
-        if (source.equals("Kelvin") && destination.equals("Celsius")) return value - 273.15;
-
-        // Same unit
-        if (source.equals(destination)) return value;
-
-        Toast.makeText(this, "Conversion not supported!", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Unsupported conversion", Toast.LENGTH_SHORT).show();
         return 0;
     }
 }
